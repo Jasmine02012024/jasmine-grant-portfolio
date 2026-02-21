@@ -1,485 +1,731 @@
-/* =========================================================
+/*
+  ============================================================
   FILE: script.js
 
-  WHY THIS FILE EXISTS:
-  - Controls the Restricted Access gate (password + tries)
-  - Plays the red-folder opening animation on unlock
-  - Handles page switching + page-flip animation
-  - Makes everything clickable open a modal (your dossier reports)
-  - Runs scan + stamping animations
-  - Copies email on contact
+  THIS FILE CONTROLS:
+    1) Lock screen (access flow, tries, seal break animation)
+    2) Folder cover overlay (open dossier button)
+    3) Page-flip engine (real page turning effect)
+    4) Tabs behavior:
+       - right tabs = sections ahead
+       - left tabs = sections behind
+       - clicking any tab still FLIPS pages to reach it
+    5) Table of contents jump:
+       - still flips pages sequentially (no teleport switch)
+    6) Scan overlay + stamp tool overlays
+    7) Modal for “clickable docs” details
 
-  EDIT SAFELY:
-  - PASSCODE
-  - TOP_SECRET_SCORE
-  - modalContent text (your real portfolio content)
+  IMPORTANT NOTE ABOUT “PASSWORD”:
+    - This is NOT true security. Front-end code can be inspected.
+    - It’s for cinematic UX. Real security requires a backend.
+  ============================================================
+*/
 
-  DONT TOUCH (unless you know why):
-  - sessionStorage key: "jg_unlocked"
-  - showPage timing + classes (affects transitions)
-========================================================= */
+/* ============================================================
+  CONFIG YOU EDIT SAFELY
+============================================================ */
 
-/* =========================================================
-  CONFIG (EDIT THESE)
-========================================================= */
-
-// EDIT: The clearance code (this is what your resume references)
+// TODO: change passcode if you want (cinematic only)
 const PASSCODE = "0818";
 
-// EDIT: Top secret rating out of 100 (for the Top Secret modal)
-const TOP_SECRET_SCORE = 92;
+// TODO: codename text (glitch tag)
+const CODENAME = "OBSIDIAN";
 
-/* =========================================================
-  ELEMENTS (DON'T EDIT IDs unless you update HTML too)
-========================================================= */
+// TODO: top headline file id (cosmetic)
+const FILE_ID = "JG-0818";
 
-const gate = document.getElementById("gate");
-const gateCard = document.getElementById("gateCard");
-const gateInput = document.getElementById("gateInput");
-const gateBtn = document.getElementById("gateBtn");
-const guestBtn = document.getElementById("guestBtn");
-const triesLeft = document.getElementById("triesLeft");
-const gateMsg = document.getElementById("gateMsg");
-const bootText = document.getElementById("bootText");
+// TODO: section definitions (YOUR CONTENT LIVES HERE)
+const SECTIONS = [
+  {
+    key: "home",
+    title: "Home • Access Granted",
+    tabColor: "tab-purple",
+    badge: "ACTIVE",
+    bodyHTML: `
+      <p><strong>Welcome.</strong> This dossier was built to prove one thing: Jasmine Grant is hire-ready.</p>
 
-const unlockStage = document.getElementById("unlockStage");
-const redFolder = document.getElementById("redFolder");
+      <div class="doc" data-doc="mission">
+        <strong>MISSION OBJECTIVE</strong><br/>
+        What I do + why I’m elite.
+      </div>
 
-const app = document.getElementById("app");
-const statusDot = document.getElementById("statusDot");
-const year = document.getElementById("year");
+      <div class="doc" data-doc="how">
+        <strong>HOW TO NAVIGATE</strong><br/>
+        Tabs + table of contents (still flips pages).
+      </div>
 
-const pageFrame = document.getElementById("pageFrame");
-const tabs = Array.from(document.querySelectorAll(".tab"));
+      <div class="doc" data-doc="next">
+        <strong>RECRUITER FLOW</strong><br/>
+        Quick route through the file.
+      </div>
 
-const pages = {
-  home: document.getElementById("page-home"),
-  bio: document.getElementById("page-bio"),
-  experience: document.getElementById("page-experience"),
-  evidence: document.getElementById("page-evidence"),
-  skills: document.getElementById("page-skills"),
-  awards: document.getElementById("page-awards"),
-  references: document.getElementById("page-references"),
-  contact: document.getElementById("page-contact"),
-};
+      <!-- TODO: Add one super short line that feels like “agency file” -->
+      <p style="opacity:.75;">Status: Available • Priority: High • Response: Immediate</p>
+    `
+  },
+  {
+    key: "case",
+    title: "Case Summary",
+    tabColor: "tab-red",
+    badge: "CONFIDENTIAL",
+    bodyHTML: `
+      <p>
+        <!-- TODO: Put your real 6–10 sentence professional summary here -->
+        Jasmine Grant is a customer-focused technical support professional known for calm communication,
+        clear documentation, and fast triage under pressure.
+      </p>
 
-// Top actions
-const btnScan = document.getElementById("btnScan");
-const btnStampBtn = document.getElementById("btnStampBtn");
+      <div class="doc" data-doc="caseFull">
+        <strong>OPEN FULL REPORT</strong><br/>
+        Longer bio + positioning.
+      </div>
+    `
+  },
+  {
+    key: "experience",
+    title: "Experience Timeline",
+    tabColor: "tab-blue",
+    badge: "LOG",
+    bodyHTML: `
+      <p><strong>Work + education timeline</strong>, written like an evidence log.</p>
 
-// Stamp tool visuals
-const stampTool = document.getElementById("stampTool");
-const approvedStamp = document.getElementById("approvedStamp");
+      <div class="doc" data-doc="work">
+        <strong>WORK LOG</strong><br/>
+        Roles, dates, measurable wins.
+      </div>
 
-// Stamps
-const topSecretStamp = document.getElementById("topSecretStamp");
-const confStamp = document.getElementById("confStamp");
+      <div class="doc" data-doc="school">
+        <strong>EDUCATION LOG</strong><br/>
+        Programs, coursework, milestones.
+      </div>
+    `
+  },
+  {
+    key: "evidence",
+    title: "Evidence • Projects",
+    tabColor: "tab-olive",
+    badge: "RESTRICTED",
+    bodyHTML: `
+      <p><strong>Projects</strong> presented as case files and findings.</p>
 
-/* =========================================================
-  TOAST (small messages)
-========================================================= */
+      <div class="doc" data-doc="projects">
+        <strong>OPEN PROJECT FILES</strong><br/>
+        Case studies (what, why, result).
+      </div>
 
-const toast = document.getElementById("toast");
+      <!-- TODO: You said LinkedIn goes here later -->
+      <p style="opacity:.75;">Artifacts (LinkedIn/GitHub) will be placed here (not on Home).</p>
+    `
+  },
+  {
+    key: "skills",
+    title: "Skills Matrix",
+    tabColor: "tab-gray",
+    badge: "ASSESSMENT",
+    bodyHTML: `
+      <p><strong>Skill matrix</strong> (tools + strength + proof).</p>
 
-function showToast(msg, ms = 2400){
-  if (!toast) return;
-  toast.textContent = msg;
-  toast.classList.add("show");
-  setTimeout(() => toast.classList.remove("show"), ms);
-}
+      <div class="doc" data-doc="skillsMatrix">
+        <strong>VIEW MATRIX</strong><br/>
+        Replace with your real tool list.
+      </div>
+    `
+  },
+  {
+    key: "awards",
+    title: "Awards + Credentials",
+    tabColor: "tab-green",
+    badge: "VERIFIED",
+    bodyHTML: `
+      <p>Certifications, training, and recognition.</p>
 
-/* =========================================================
-  MODAL (everything clickable)
-========================================================= */
+      <div class="doc" data-doc="awardsList">
+        <strong>OPEN CREDENTIALS</strong><br/>
+        Add certs + programs.
+      </div>
+    `
+  },
+  {
+    key: "references",
+    title: "References",
+    tabColor: "tab-purple",
+    badge: "ON REQUEST",
+    bodyHTML: `
+      <p>References are available on request.</p>
 
+      <div class="doc" data-doc="refPolicy">
+        <strong>REFERENCE POLICY</strong><br/>
+        How to request + what’s included.
+      </div>
+    `
+  },
+  {
+    key: "contact",
+    title: "Contact",
+    tabColor: "tab-red",
+    badge: "ACTIVE",
+    bodyHTML: `
+      <p><strong>Contact lives here only</strong> (your rule).</p>
+
+      <div class="doc" data-doc="contact">
+        <strong>OPEN CONTACT CHANNEL</strong><br/>
+        Set up real email delivery (Formspree).
+      </div>
+    `
+  }
+];
+
+/* ============================================================
+  DOM ELEMENTS (grab everything we need)
+============================================================ */
+
+// Lock screen elements
+const lockScreen = document.getElementById("lockScreen");
+const passcodeInput = document.getElementById("passcode");
+const accessBtn = document.getElementById("accessBtn");
+const requestAccessBtn = document.getElementById("requestAccessBtn");
+const triesLeftEl = document.getElementById("triesLeft");
+const lockMsg = document.getElementById("lockMsg");
+const sealBreak = document.getElementById("sealBreak");
+
+// Desk scene elements
+const deskScene = document.getElementById("deskScene");
+const liveDot = document.getElementById("liveDot");
+const tocSelect = document.getElementById("tocSelect");
+
+// Folder cover overlay
+const coverOverlay = document.getElementById("coverOverlay");
+const openFolderBtn = document.getElementById("openFolderBtn");
+const readOnlyBtn = document.getElementById("readOnlyBtn");
+
+// Pages
+const pageLeft = document.getElementById("pageLeft");
+const pageRight = document.getElementById("pageRight");
+const leftBadge = document.getElementById("leftBadge");
+const leftId = document.getElementById("leftId");
+const leftTitle = document.getElementById("leftTitle");
+const leftBody = document.getElementById("leftBody");
+
+const rightBadge = document.getElementById("rightBadge");
+const rightId = document.getElementById("rightId");
+const rightTitle = document.getElementById("rightTitle");
+const rightBody = document.getElementById("rightBody");
+
+// Flip sheet overlay on right page
+const flipSheet = document.getElementById("flipSheet");
+
+// Navigation buttons
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+
+// Tabs containers
+const tabsLeft = document.getElementById("tabsLeft");
+const tabsRight = document.getElementById("tabsRight");
+
+// Scan + stamp overlays
+const runScanBtn = document.getElementById("runScanBtn");
+const scanOverlay = document.getElementById("scanOverlay");
+const scanText = document.getElementById("scanText");
+
+const stampApprovalBtn = document.getElementById("stampApprovalBtn");
+const stampOverlay = document.getElementById("stampOverlay");
+
+// Modal + toast
 const modal = document.getElementById("modal");
 const modalBackdrop = document.getElementById("modalBackdrop");
 const modalClose = document.getElementById("modalClose");
 const modalTitle = document.getElementById("modalTitle");
 const modalBody = document.getElementById("modalBody");
+const toast = document.getElementById("toast");
+
+// Codename
+const codename = document.getElementById("codename");
+
+/* ============================================================
+  STATE (current page index, tries, etc.)
+============================================================ */
+
+let tries = 3;
+
+// currentIndex = which section is currently on the RIGHT page
+let currentIndex = 0;
+
+// leftIndex = last section that was flipped to the left (for realism)
+let leftIndex = -1;
+
+// A “busy” flag so users don’t spam flips mid-animation
+let isFlipping = false;
+
+/* ============================================================
+  SMALL HELPERS (toast, modal)
+============================================================ */
+
+function showToast(msg, ms = 2200){
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), ms);
+}
 
 function openModal(title, html){
   modalTitle.textContent = title;
   modalBody.innerHTML = html;
   modal.classList.remove("hidden");
-  modal.setAttribute("aria-hidden", "false");
+  modal.setAttribute("aria-hidden","false");
 }
-
 function closeModal(){
   modal.classList.add("hidden");
-  modal.setAttribute("aria-hidden", "true");
+  modal.setAttribute("aria-hidden","true");
 }
-
 modalBackdrop?.addEventListener("click", closeModal);
 modalClose?.addEventListener("click", closeModal);
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeModal();
-});
+document.addEventListener("keydown", (e)=>{ if(e.key === "Escape") closeModal(); });
 
-/* =========================================================
-  BOOT TEXT LOOP (gate vibe)
-========================================================= */
+/* ============================================================
+  INITIAL SETUP (codename, toc, initial pages)
+============================================================ */
 
-function bootSequence(){
-  if (!bootText) return;
+// Set codename text + glitch data-text
+codename.textContent = CODENAME;
+codename.setAttribute("data-text", CODENAME);
 
-  const lines = [
-    "INITIALIZING SECURE SESSION",
-    "VERIFYING CLEARANCE…",
-    "LOADING DOSSIER INDEX…"
-  ];
-
-  let i = 0;
-  const tick = () => {
-    bootText.innerHTML = `${lines[i]}<span class="cursor">▌</span>`;
-    i = (i + 1) % lines.length;
-  };
-
-  tick();
-  setInterval(tick, 1100);
-}
-bootSequence();
-
-/* =========================================================
-  STATUS DOT (turns red when user is in)
-========================================================= */
-
-function setLive(on){
-  statusDot?.classList.toggle("live", on);
+// Build TOC dropdown (top shortcut)
+function buildTOC(){
+  tocSelect.innerHTML = "";
+  SECTIONS.forEach((s, i) => {
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = `${i+1}. ${s.title}`;
+    tocSelect.appendChild(opt);
+  });
 }
 
-/* =========================================================
-  GATE LOGIC (0818 + 3 tries)
-========================================================= */
+// Render pages (left + right) from indexes
+function renderPages(){
+  const right = SECTIONS[currentIndex];
+  const left = leftIndex >= 0 ? SECTIONS[leftIndex] : null;
 
-let tries = 3;
+  // Right page (current)
+  rightBadge.textContent = right.badge;
+  rightId.textContent = `FILE: ${FILE_ID} • PAGE ${currentIndex + 1}/${SECTIONS.length}`;
+  rightTitle.textContent = right.title;
+  rightBody.innerHTML = right.bodyHTML;
 
-// WHY: visually shake gate card on wrong code
-function flashError(){
-  gateCard?.classList.add("error");
-  setTimeout(() => gateCard?.classList.remove("error"), 350);
+  // Left page (previous) — if none yet, show a placeholder
+  if(left){
+    leftBadge.textContent = "ARCHIVE";
+    leftId.textContent = `ARCHIVE • PAGE ${leftIndex + 1}`;
+    leftTitle.textContent = left.title;
+    leftBody.innerHTML = `<p style="opacity:.75;">Archived section (already flipped).</p>`;
+  } else {
+    leftBadge.textContent = "EMPTY";
+    leftId.textContent = "ARCHIVE";
+    leftTitle.textContent = "—";
+    leftBody.innerHTML = `<p style="opacity:.60;">No pages flipped yet.</p>`;
+  }
+
+  // Sync TOC selection
+  tocSelect.value = String(currentIndex);
+
+  // Rebuild tabs every render
+  buildTabs();
 }
 
-// WHY: plays the "red folder open" animation and then shows HOME only
-function playUnlockAnimation(){
-  unlockStage?.classList.remove("hidden");
-  redFolder?.classList.add("opening");
+// Tabs rule you asked for:
+// - current section is “open” on the right side
+// - previous sections appear on the left side (like divider tabs moved)
+function buildTabs(){
+  tabsLeft.innerHTML = "";
+  tabsRight.innerHTML = "";
+
+  SECTIONS.forEach((s, i) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `tab-btn ${i === currentIndex ? "active" : ""}`;
+    btn.setAttribute("data-target", String(i));
+    btn.innerHTML = `
+      <span class="tab-label">${s.title.split("•")[0].trim()}</span>
+      <span class="tab-color ${s.tabColor}"></span>
+    `;
+
+    // If the section index is less than currentIndex, it lives on LEFT
+    if(i < currentIndex){
+      tabsLeft.appendChild(btn);
+    } else {
+      // current + future live on RIGHT
+      tabsRight.appendChild(btn);
+    }
+  });
+}
+
+/* ============================================================
+  LOCK SCREEN FLOW
+============================================================ */
+
+function grantAccess(){
+  // show cinematic “seal break”
+  sealBreak.classList.remove("hidden");
+  sealBreak.setAttribute("aria-hidden","false");
 
   setTimeout(() => {
-    unlockStage?.classList.add("hidden");
-    redFolder?.classList.remove("opening");
+    // hide lock screen, show desk
+    lockScreen.classList.add("hidden");
+    lockScreen.setAttribute("aria-hidden","true");
 
-    // save unlocked state for this browser tab session
-    sessionStorage.setItem("jg_unlocked", "1");
+    deskScene.classList.remove("hidden");
+    deskScene.setAttribute("aria-hidden","false");
 
-    // hide gate, show app
-    gate?.classList.add("hidden");
-    app?.classList.remove("hidden");
+    // mark dot as live
+    liveDot.classList.add("live");
 
-    // show HOME first only (as requested)
-    showPage("home", true);
+    // show cover overlay first (confidential sheet)
+    coverOverlay.classList.remove("hidden");
+    coverOverlay.setAttribute("aria-hidden","false");
 
-    setLive(true);
-    showToast("ACCESS APPROVED • DOSSIER OPENED", 2600);
-  }, 1150);
+    showToast("ACCESS GRANTED • DOSSIER LOADED", 2400);
+  }, 850);
 }
 
-function checkCode(){
-  const val = (gateInput?.value || "").trim();
+function denyAccess(){
+  tries--;
+  triesLeftEl.textContent = String(tries);
+  lockMsg.textContent = `ACCESS DENIED. ${tries} TRIES LEFT.`;
+  showToast("ACCESS DENIED", 1300);
 
-  if (val === PASSCODE){
-    gateMsg.textContent = "ACCESS APPROVED.";
-    playUnlockAnimation();
-    return;
+  if(tries <= 0){
+    lockMsg.textContent = "LOCKED OUT. REFRESH TO TRY AGAIN.";
+    passcodeInput.disabled = true;
+    accessBtn.disabled = true;
+    requestAccessBtn.disabled = true;
   }
-
-  // wrong code
-  tries -= 1;
-  if (triesLeft) triesLeft.textContent = String(tries);
-  flashError();
-
-  if (tries <= 0){
-    gateMsg.textContent = "ACCESS LOCKED. REFRESH TO TRY AGAIN.";
-    gateInput.disabled = true;
-    gateBtn.disabled = true;
-    showToast("ACCESS DENIED • LOCKED OUT", 2400);
-    return;
-  }
-
-  gateMsg.textContent = `INCORRECT CODE. ${tries} TRIES LEFT.`;
-  showToast("ACCESS DENIED", 1600);
 }
 
-// Q1 = A: temp access does NOT unlock site
-function tempAccessRequest(){
-  openModal("TEMP ACCESS REQUEST", `
-    <p><strong>Restricted dossier.</strong> Clearance is required.</p>
-    <p>Refer to the <strong>resume</strong> for the clearance code.</p>
-    <p class="tiny" style="opacity:.75;">If you are reviewing for hiring, use Contact to request access.</p>
-  `);
-}
-
-/* =========================================================
-  GATE INIT (hide app until unlocked)
-========================================================= */
-
-if (sessionStorage.getItem("jg_unlocked") === "1"){
-  // already unlocked this session
-  gate?.classList.add("hidden");
-  app?.classList.remove("hidden");
-  setLive(true);
-} else {
-  // locked
-  gate?.classList.remove("hidden");
-  app?.classList.add("hidden");
-  tries = 3;
-  if (triesLeft) triesLeft.textContent = "3";
-}
-
-/* Gate events */
-gateBtn?.addEventListener("click", checkCode);
-gateInput?.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") checkCode();
+// ACCESS button click
+accessBtn.addEventListener("click", () => {
+  const entered = (passcodeInput.value || "").trim();
+  if(entered === PASSCODE) grantAccess();
+  else denyAccess();
 });
-guestBtn?.addEventListener("click", tempAccessRequest);
 
-/* =========================================================
-  YEAR FOOTER
-========================================================= */
+// Enter key submits
+passcodeInput.addEventListener("keydown", (e) => {
+  if(e.key === "Enter") accessBtn.click();
+});
 
-if (year) year.textContent = new Date().getFullYear();
+// Request view-only access (no password)
+requestAccessBtn.addEventListener("click", () => {
+  openModal("VIEW-ONLY ACCESS", `
+    <p><strong>Welcome.</strong> You can preview a short summary without clearance.</p>
+    <p>For full access, request the clearance code.</p>
+    <div style="margin-top:12px;">
+      <button class="chip mono" id="previewBtn" type="button">PREVIEW SUMMARY</button>
+    </div>
+  `);
 
-/* =========================================================
-  PAGE SWITCHING + PAGE FLIP ANIMATION
-  NOTE: Switching tabs flips pages like a folder
-========================================================= */
+  setTimeout(() => {
+    document.getElementById("previewBtn")?.addEventListener("click", () => {
+      closeModal();
+      grantAccess();
+      // Then auto-open a summary-only view:
+      setTimeout(() => {
+        coverOverlay.classList.add("hidden");
+        showToast("SUMMARY MODE • LIMITED", 2400);
+        // Jump to Case Summary with flips (still cinematic)
+        jumpToIndex(1);
+      }, 1100);
+    });
+  }, 0);
+});
 
-function showPage(key, skipFlip = false){
-  // tabs active state
-  tabs.forEach(t => t.classList.toggle("active", t.dataset.page === key));
+/* ============================================================
+  COVER OVERLAY BUTTONS
+============================================================ */
 
-  // show/hide pages
-  Object.entries(pages).forEach(([k, p]) => {
-    if (!p) return;
-    p.classList.remove("show", "enter");
-    if (k === key) p.classList.add("show");
-  });
+// Open dossier: hides cover overlay and reveals pages
+openFolderBtn.addEventListener("click", () => {
+  coverOverlay.classList.add("hidden");
+  coverOverlay.setAttribute("aria-hidden","true");
+  showToast("DOSSIER OPENED", 1500);
+});
 
-  // allow display:block to apply before adding animation class
-  requestAnimationFrame(() => {
-    pages[key]?.classList.add("enter");
-  });
+// View summary: hides cover overlay but takes you to Case Summary
+readOnlyBtn.addEventListener("click", () => {
+  coverOverlay.classList.add("hidden");
+  coverOverlay.setAttribute("aria-hidden","true");
+  showToast("SUMMARY VIEW", 1500);
+  jumpToIndex(1);
+});
 
-  // add page flip animation
-  if (!skipFlip && pageFrame){
-    pageFrame.classList.add("pageFlip");
-    setTimeout(() => pageFrame.classList.remove("pageFlip"), 450);
-  }
+/* ============================================================
+  PAGE FLIP ENGINE (realistic turn, not sliding)
 
-  // keep it clean: always scroll to top
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  Your rule:
+    - flipping is the ONLY way to navigate
+    - TOC / tabs still flip pages to reach target
+    - after flip, tabs should appear left/right appropriately
+============================================================ */
+
+// Flip forward one page (current -> left, next becomes right)
+async function flipForwardOnce(){
+  if(isFlipping) return;
+  if(currentIndex >= SECTIONS.length - 1) return;
+
+  isFlipping = true;
+
+  // Prepare flip sheet to look like current page (visual consistency)
+  flipSheet.classList.add("active");
+  flipSheet.classList.remove("flip-back");
+  flipSheet.classList.add("flip-forward");
+
+  // During flip, we want the left page to become the current page (archive)
+  const oldIndex = currentIndex;
+  leftIndex = oldIndex;
+  currentIndex = oldIndex + 1;
+
+  // Wait mid-animation before swapping content (feels like paper turning)
+  await wait(360);
+  renderPages();
+
+  // Finish animation
+  await wait(400);
+
+  // Reset flip sheet
+  flipSheet.classList.remove("flip-forward");
+  flipSheet.classList.remove("active");
+
+  isFlipping = false;
 }
 
-/* Tabs */
-tabs.forEach(tab => tab.addEventListener("click", () => showPage(tab.dataset.page)));
+// Flip backward one page (go back)
+async function flipBackOnce(){
+  if(isFlipping) return;
+  if(currentIndex <= 0) return;
 
-/* =========================================================
-  MODAL CONTENT (EDIT THIS SECTION FOR YOUR REAL PORTFOLIO)
-========================================================= */
+  isFlipping = true;
 
-const modalContent = {
+  // Flip sheet from the right side (reverse turn)
+  flipSheet.classList.add("active");
+  flipSheet.classList.remove("flip-forward");
+  flipSheet.classList.add("flip-back");
+
+  const oldIndex = currentIndex;
+  currentIndex = oldIndex - 1;
+  leftIndex = currentIndex - 1; // archive becomes one behind
+
+  await wait(360);
+  renderPages();
+
+  await wait(400);
+
+  flipSheet.classList.remove("flip-back");
+  flipSheet.classList.remove("active");
+
+  isFlipping = false;
+}
+
+// Utility: wait helper for animation timing
+function wait(ms){
+  return new Promise(res => setTimeout(res, ms));
+}
+
+/* ============================================================
+  JUMP NAVIGATION (tabs + TOC) — still flips pages sequentially
+============================================================ */
+
+async function jumpToIndex(targetIndex){
+  if(isFlipping) return;
+  if(targetIndex === currentIndex) return;
+
+  // Decide direction and flip step-by-step
+  if(targetIndex > currentIndex){
+    while(currentIndex < targetIndex){
+      await flipForwardOnce();
+      await wait(80); // small pause so the flips feel readable
+    }
+  } else {
+    while(currentIndex > targetIndex){
+      await flipBackOnce();
+      await wait(80);
+    }
+  }
+}
+
+// TOC change event
+tocSelect.addEventListener("change", (e) => {
+  const target = Number(e.target.value);
+  jumpToIndex(target);
+});
+
+// Tabs click event (left or right)
+function handleTabClick(e){
+  const btn = e.target.closest(".tab-btn");
+  if(!btn) return;
+  const target = Number(btn.getAttribute("data-target"));
+  jumpToIndex(target);
+}
+tabsLeft.addEventListener("click", handleTabClick);
+tabsRight.addEventListener("click", handleTabClick);
+
+// Prev/Next buttons on the page
+prevBtn.addEventListener("click", flipBackOnce);
+nextBtn.addEventListener("click", flipForwardOnce);
+
+/* ============================================================
+  “CLICKABLE EVERYTHING” DOCS (open modals from page body)
+============================================================ */
+
+const DOCS = {
   mission: {
-    title: "MISSION OBJECTIVE • REPORT",
+    title: "MISSION OBJECTIVE",
     html: `
-      <p><strong>Objective:</strong> Position Jasmine Grant in a role where she can resolve issues fast, document cleanly, and operate under SLA pressure.</p>
+      <p><strong>Objective:</strong> Place Jasmine Grant in a Tier 1 / Service Desk role.</p>
       <ul>
-        <li>High-volume ticket triage + fast resolution</li>
-        <li>Clear documentation and calm communication</li>
-        <li>Security-minded support habits (least privilege, visibility)</li>
+        <li>Fast triage + clear resolutions</li>
+        <li>Documentation that saves teams time</li>
+        <li>Security-minded access handling</li>
       </ul>
-      <p class="tiny" style="opacity:.75;"><strong>TODO:</strong> Add real metrics (tickets/day, CSAT, SLA %).</p>
+      <p style="opacity:.75;"><strong>TODO:</strong> Add ticket stats (SLA %, CSAT, etc.).</p>
     `
   },
-  brief: {
-    title: "REDACTED BRIEF • AUTHORIZED VIEW",
+  how: {
+    title: "HOW TO NAVIGATE",
     html: `
-      <p><strong>Assessment:</strong> Elite problem solver with strong reliability and growth upside.</p>
-      <p><strong>Risk:</strong> Low. Coachable. Consistent.</p>
-      <p><strong>Edge:</strong> Communication + execution under pressure.</p>
-      <p class="tiny" style="opacity:.75;"><strong>TODO:</strong> Add 2–3 “proof bullets” from your resume.</p>
+      <p>This site is a <strong>physical folder simulation</strong>.</p>
+      <p>Tabs and TOC still <strong>flip pages</strong> so it feels real.</p>
+      <p>Everything important opens as a report (clickable).</p>
     `
   },
-  fileIndex: {
-    title: "FILE INDEX • NAVIGATION",
+  next: {
+    title: "RECRUITER FLOW",
     html: `
-      <p>This dossier is organized by folder tabs:</p>
       <ol>
         <li>Case Summary</li>
         <li>Experience</li>
         <li>Evidence</li>
         <li>Skills Matrix</li>
-        <li>Awards</li>
-        <li>References</li>
         <li>Contact</li>
       </ol>
-      <p class="tiny" style="opacity:.75;">Each tab flip is intentional: it should feel like pages in a file.</p>
+      <p style="opacity:.75;">Goal: fast confidence, no confusion.</p>
     `
   },
-  bioReport: {
+  caseFull: {
     title: "CASE SUMMARY • FULL REPORT",
     html: `
-      <p><strong>Summary:</strong> Jasmine Grant is a Tier 1 Help Desk / Service Desk professional with strong ticket triage, documentation habits, and customer communication.</p>
-      <p><strong>Positioning:</strong> High volume + SLA driven support asset.</p>
-      <p><strong>Next Path:</strong> Cloud security foundations and security-adjacent support roles.</p>
-      <p class="tiny" style="opacity:.75;"><strong>TODO:</strong> Paste your real “Professional Summary” here.</p>
+      <p><strong>TODO:</strong> Paste your final professional bio.</p>
+      <p>Keep it proof-based and recruiter-friendly.</p>
     `
   },
-  experienceReport: {
-    title: "EXPERIENCE • TIMELINE FILE",
+  work: {
+    title: "WORK LOG",
     html: `
-      <p><strong>TODO:</strong> Paste your roles as “case entries.”</p>
+      <p><strong>TODO:</strong> Add your roles, dates, and results.</p>
       <ul>
-        <li>Role • Company • Dates • Tools</li>
-        <li>Impact metrics (tickets, SLA, CSAT)</li>
-        <li>Notable wins (process improvements)</li>
+        <li>Company • Role • Dates</li>
+        <li>Tools used</li>
+        <li>Wins (SLA, CSAT, ticket volume)</li>
       </ul>
     `
   },
-  evidenceReport: {
-    title: "EVIDENCE • REPORTS",
+  school: {
+    title: "EDUCATION LOG",
     html: `
-      <p><strong>Evidence is framed as findings (professional).</strong></p>
-      <ul>
-        <li>Ticket ops + SLA performance</li>
-        <li>Documentation artifacts</li>
-        <li>Process improvements</li>
-      </ul>
-      <p class="tiny" style="opacity:.75;"><strong>TODO:</strong> Add LinkedIn/GitHub here later as “Artifacts.”</p>
+      <p><strong>TODO:</strong> Add programs and key coursework.</p>
     `
   },
-  skillsReport: {
-    title: "SKILLS MATRIX • ASSESSMENT",
+  projects: {
+    title: "PROJECT FILES",
     html: `
-      <p><strong>Core:</strong> Troubleshooting, ticketing, documentation, customer support.</p>
-      <p><strong>Tools:</strong> TODO: Add your ticketing/tools stack.</p>
-      <p><strong>Security Path:</strong> cloud basics, access control mindset, security hygiene.</p>
-      <p class="tiny" style="opacity:.75;"><strong>TODO:</strong> We can turn this into a real matrix later (levels + proof).</p>
-    `
-  },
-  awardsReport: {
-    title: "AWARDS + CREDENTIALS • FILE",
-    html: `
-      <p><strong>TODO:</strong> Add certifications, cohorts, awards.</p>
+      <p><strong>TODO:</strong> Add projects as case studies.</p>
+      <p>Format:</p>
       <ul>
-        <li>TODO: Certification</li>
-        <li>TODO: Training</li>
-        <li>TODO: Recognition</li>
+        <li>Problem</li>
+        <li>Action</li>
+        <li>Result</li>
       </ul>
     `
   },
-  ref1: {
-    title: "REFERENCE 01 • CONTACT ON REQUEST",
+  skillsMatrix: {
+    title: "SKILLS MATRIX",
     html: `
-      <p><strong>TODO: Name</strong></p>
-      <p>TODO: Title • Company</p>
-      <p class="tiny" style="opacity:.75;">Available upon request via Contact.</p>
+      <p><strong>TODO:</strong> Add real tools + proof.</p>
+      <p>Examples:</p>
+      <ul>
+        <li>Ticketing: Zendesk / ServiceNow</li>
+        <li>OS: Windows, macOS basics</li>
+        <li>Networking: basic troubleshooting</li>
+      </ul>
     `
   },
-  ref2: {
-    title: "REFERENCE 02 • CONTACT ON REQUEST",
+  awardsList: {
+    title: "AWARDS + CREDENTIALS",
     html: `
-      <p><strong>TODO: Name</strong></p>
-      <p>TODO: Title • Company</p>
-      <p class="tiny" style="opacity:.75;">Available upon request via Contact.</p>
+      <p><strong>TODO:</strong> Add certs, trainings, and awards.</p>
     `
   },
+  refPolicy: {
+    title: "REFERENCE POLICY",
+    html: `
+      <p>References are provided on request.</p>
+      <p><strong>TODO:</strong> Add how recruiters can request them.</p>
+    `
+  },
+  contact: {
+    title: "CONTACT CHANNEL",
+    html: `
+      <p><strong>Real email delivery:</strong></p>
+      <p>Use Formspree (simple) or a custom backend (advanced).</p>
+      <p style="opacity:.75;"><strong>TODO:</strong> If you want Formspree, tell me and I’ll wire it in cleanly.</p>
+      <p>For now, we can also use a mailto link.</p>
+    `
+  }
 };
 
-/* Wire clickable elements to modals */
-function wireClickable(el){
-  const key = el.dataset.modal;
-  if (!key || !modalContent[key]) return;
+// Click handler for doc cards inside page content
+document.addEventListener("click", (e) => {
+  const doc = e.target.closest("[data-doc]");
+  if(!doc) return;
+  const key = doc.getAttribute("data-doc");
+  const item = DOCS[key];
+  if(!item) return;
+  openModal(item.title, item.html);
+});
 
-  const { title, html } = modalContent[key];
+/* ============================================================
+  SCAN + STAMP (cinematic overlays)
+============================================================ */
 
-  // click
-  el.addEventListener("click", () => openModal(title, html));
-
-  // keyboard accessibility
-  el.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") openModal(title, html);
-  });
+function showScan(msg){
+  scanText.textContent = msg;
+  scanOverlay.classList.remove("hidden");
+  scanOverlay.setAttribute("aria-hidden","false");
+}
+function hideScan(){
+  scanOverlay.classList.add("hidden");
+  scanOverlay.setAttribute("aria-hidden","true");
 }
 
-document.querySelectorAll("[data-modal].clickable").forEach(wireClickable);
-
-/* =========================================================
-  TOP SECRET + CONFIDENTIAL STAMPS (click actions)
-========================================================= */
-
-topSecretStamp?.addEventListener("click", () => {
-  openModal("TOP SECRET • CLEARANCE SCALE", `
-    <p><strong>Top Secret Scale:</strong> <span style="color:#d61f2c; font-weight:800;">${TOP_SECRET_SCORE}/100</span></p>
-    <p>This file contains restricted evaluation material.</p>
-    <p class="tiny" style="opacity:.75;">Clearance code is provided inside the resume.</p>
-  `);
+runScanBtn.addEventListener("click", async () => {
+  showScan("REPROCESSING DOSSIER…");
+  await wait(900);
+  showScan("SCAN IN PROGRESS…");
+  await wait(1100);
+  showScan("SCAN COMPLETE: HIGH VALUE ASSET AVAILABLE FOR HIRING");
+  showToast("SCAN COMPLETE • AVAILABLE FOR HIRING", 3200);
+  await wait(2400);
+  hideScan();
 });
 
-confStamp?.addEventListener("click", () => {
-  openModal("CONFIDENTIAL • SUPERVISOR REQUIRED", `
-    <p><strong>Report to supervisor</strong> for more information.</p>
-    <p class="tiny" style="opacity:.75;">References are available in the References file.</p>
-    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
-      <button class="btn mono primary" id="goRefsBtn" type="button">GO TO REFERENCES</button>
-      <button class="btn mono" id="closeModalBtn" type="button">CLOSE</button>
-    </div>
-  `);
-
-  // wire buttons after modal renders
-  setTimeout(() => {
-    document.getElementById("goRefsBtn")?.addEventListener("click", () => {
-      closeModal();
-      showPage("references");
-    });
-    document.getElementById("closeModalBtn")?.addEventListener("click", closeModal);
-  }, 0);
+stampApprovalBtn.addEventListener("click", async () => {
+  stampOverlay.classList.remove("hidden");
+  stampOverlay.setAttribute("aria-hidden","false");
+  await wait(900);
+  stampOverlay.classList.add("hidden");
+  stampOverlay.setAttribute("aria-hidden","true");
+  showToast("APPROVAL STAMPED", 1800);
 });
 
-/* =========================================================
-  STAMP APPROVAL BUTTON (tool hit + green stamp)
-========================================================= */
+/* ============================================================
+  BOOT
+============================================================ */
 
-btnStampBtn?.addEventListener("click", () => {
-  stampTool?.classList.add("hit");
-  setTimeout(() => approvedStamp?.classList.add("show"), 320);
-
-  setTimeout(() => stampTool?.classList.remove("hit"), 900);
-  setTimeout(() => approvedStamp?.classList.remove("show"), 1800);
-});
-
-/* =========================================================
-  RUN SCAN (glitchy processing + final message)
-========================================================= */
-
-btnScan?.addEventListener("click", () => {
-  showToast("REPROCESSING DOSSIER…", 1400);
-  setTimeout(() => showToast("SCAN IN PROGRESS…", 1400), 900);
-  setTimeout(() => showToast("SCAN COMPLETE: HIGH VALUE ASSET AVAILABLE FOR HIRING", 3200), 1900);
-});
-
-/* =========================================================
-  COPY EMAIL (Contact)
-========================================================= */
-
-async function copyText(text){
-  try{
-    await navigator.clipboard.writeText(text);
-    showToast("COPIED TO CLIPBOARD", 1400);
-  }catch{
-    showToast("COPY FAILED (try manual)", 1600);
-  }
-}
-
-document.querySelectorAll("[data-copy]").forEach(btn => {
-  btn.addEventListener("click", () => copyText(btn.dataset.copy));
-});
+buildTOC();
+renderPages();
