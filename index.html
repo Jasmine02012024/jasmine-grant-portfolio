@@ -1,19 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- =========================================================
+    FILE: index.html
+    PURPOSE: Structure + content (the “pages”)
+    EDITING TIP: Search "TODO:" in VS Code.
+    IMPORTANT: TODO are COMMENTS ONLY. They will NOT break the site.
+  ========================================================== -->
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- TODO: Change browser tab title if you want -->
   <title>Jasmine Grant — High Value Asset Dossier</title>
-  <meta name="description" content="High Value Asset dossier for Jasmine Grant — Cybersecurity Student | Problem Solver | Future AI Security Engineer" />
+
+  <!-- TODO: Update preview text (shows in link previews) -->
+  <meta name="description" content="Jasmine Grant — Tier 1 Help Desk / Service Desk Analyst | High Value Asset Dossier" />
+
   <link rel="stylesheet" href="styles.css" />
 
+  <!-- =========================================================
+    FONTS (Option C)
+    - Headers: Saira Condensed (cyber, clean, serious)
+    - Body mono: JetBrains Mono (dossier/terminal)
+  ========================================================== -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 </head>
 
 <body>
-  <!-- Background: distressed red + desk + grit -->
+  <!-- =========================================================
+    ACCESS GATE (CINEMATIC ONLY)
+    WHAT IT DOES:
+    - Blocks the dossier until passcode is entered.
+    - Passcode: 0818 (set in script.js)
+    - 3 tries. Locks out until refresh.
+    NOTE: This is NOT real security. It's for the vibe.
+  ========================================================== -->
+  <div class="gate" id="gate" aria-hidden="false">
+    <div class="gate-card">
+      <div class="gate-top">
+        <div class="gate-title">RESTRICTED ACCESS</div>
+        <div class="gate-sub mono">ENTER CLEARANCE CODE TO VIEW DOSSIER</div>
+
+        <div class="gate-badge mono">
+          <span class="gate-chip">RESTRICTED</span>
+          <span class="gate-chip purple">JG-001</span>
+          <span class="gate-chip green">SECURE CHANNEL</span>
+        </div>
+
+        <div class="boot mono" id="bootText">
+          INITIALIZING SECURE SESSION<span class="cursor">▌</span>
+        </div>
+      </div>
+
+      <div class="gate-row">
+        <input
+          id="gateInput"
+          class="gate-input mono"
+          inputmode="numeric"
+          maxlength="4"
+          placeholder="••••"
+          aria-label="Access code"
+        />
+        <button id="gateBtn" class="btn mono primary" type="button">UNLOCK</button>
+      </div>
+
+      <div class="gate-meta mono">
+        TRIES REMAINING: <span id="triesLeft">3</span>
+      </div>
+
+      <div class="gate-msg mono" id="gateMsg"></div>
+
+      <div class="gate-hint mono tiny muted">
+        <!-- TODO: If you ever change the passcode, update PASSCODE in script.js -->
+        Hint: Clearance code required.
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast messages (scan complete, access granted, etc.) -->
+  <div class="toast mono" id="toast" aria-live="polite"></div>
+
+  <!-- =========================================================
+    BACKGROUND (visual only)
+    - scanline moves down when RUN SCAN is clicked
+  ========================================================== -->
   <div class="bg" aria-hidden="true">
     <div class="bg-red"></div>
     <div class="bg-desk"></div>
@@ -22,12 +94,18 @@
     <div class="scanline" id="scanline"></div>
   </div>
 
-  <!-- Top intel bar -->
+  <!-- =========================================================
+    TOP BAR (sticky)
+    - RUN SCAN -> glitch + scanline + completion message
+    - STAMP APPROVAL -> green APPROVED stamp pops in
+    - CONTACT -> jumps to contact page
+  ========================================================== -->
   <header class="topbar">
     <div class="top-left">
       <div class="sig-dot"></div>
       <div>
         <div class="top-title">INTEL DOSSIER</div>
+        <!-- TODO: Change FILE code if you want -->
         <div class="top-sub mono">CLEARANCE: CONFIDENTIAL • FILE: JG-001 • STATUS: ACTIVE</div>
       </div>
     </div>
@@ -41,25 +119,34 @@
 
   <main class="wrap">
     <section class="layout">
-      <!-- LEFT: Folder tabs (manila vibe) -->
-      <aside class="folder">
+
+      <!-- =========================================================
+        LEFT: Folder Nav
+        - Tabs switch pages
+        - data-page must match the id="page-____" sections
+      ========================================================== -->
+      <aside class="folder" aria-label="Dossier navigation">
         <div class="folder-head">
           <div class="flag mono">HIGH VALUE ASSET</div>
+
+          <!-- TODO: Name (already correct) -->
           <div class="asset-name">JASMINE GRANT</div>
+
+          <!-- TODO: Update these lines whenever you pivot roles -->
           <div class="asset-meta mono">
-            ROLE: Cybersecurity Student<br/>
-            TRAJECTORY: AI Security Engineer<br/>
-            CORE TRAIT: Problem Solver
+            ROLE: Help Desk / Service Desk (Tier 1)<br/>
+            TARGET: Cloud Security / SOC (Next Step)<br/>
+            CORE: Elite Problem Solver
           </div>
 
           <div class="stamp-row">
-            <span class="stamp topsecret mono">TOP SECRET</span>
-            <span class="stamp confidential mono">CONFIDENTIAL</span>
-            <span class="stamp approved mono" id="approvedStamp" aria-hidden="true">APPROVED</span>
+            <span class="stamp stamp-red mono">TOP SECRET</span>
+            <span class="stamp stamp-red mono">CONFIDENTIAL</span>
+            <span class="stamp stamp-green mono approved" id="approvedStamp" aria-hidden="true">APPROVED</span>
           </div>
         </div>
 
-        <nav class="tabs" aria-label="Dossier tabs">
+        <nav class="tabs">
           <button class="tab active mono" data-page="home" type="button">HOME</button>
           <button class="tab mono" data-page="bio" type="button">CASE SUMMARY</button>
           <button class="tab mono" data-page="experience" type="button">EXPERIENCE</button>
@@ -69,64 +156,104 @@
           <button class="tab mono" data-page="contact" type="button">CONTACT</button>
         </nav>
 
+        <!-- =========================================================
+          HANDLER REVIEWS (placeholder for Giscus later)
+          TODO: We will replace this with Giscus embed.
+        ========================================================== -->
         <div class="folder-foot">
           <div class="note">
-            <div class="note-title mono">HANDLER NOTE</div>
+            <div class="note-title mono">HANDLER REVIEWS</div>
             <div class="note-body mono">
-              This candidate is elite + consistent. Prioritize outreach.
+              <div class="mono tiny muted">
+                Reviews coming next (Giscus). People will be able to leave notes here.
+              </div>
+              <!-- TODO: We’ll insert Giscus script here later -->
             </div>
           </div>
         </div>
       </aside>
 
-      <!-- RIGHT: Digital dossier dashboard -->
+      <!-- =========================================================
+        RIGHT: Dashboard + Pages
+      ========================================================== -->
       <section class="dashboard">
         <div class="panel">
+
+          <!-- Header row -->
           <div class="panel-top">
             <div>
               <div class="headline">
                 <span class="mono kicker">HIGH VALUE ASSET:</span>
                 <span class="hva">JASMINE GRANT</span>
               </div>
+
+              <!-- TODO: Update your tagline -->
               <div class="subtitle mono">
-                Cybersecurity Student • Future AI Security Engineer • Cloud-First Thinker
+                Help Desk Technician • Service Desk Analyst (Tier 1) • Cloud-First Security Track
+              </div>
+
+              <!-- TODO: Change codename word only -->
+              <div class="codename mono">
+                CODENAME: <span class="tag">OBSIDIAN</span>
+                <span class="sep">|</span>
+                LEGAL NAME: <span class="tag">JASMINE GRANT</span>
+                <span class="sep">|</span>
+                CLEARANCE: <span class="tag ok">VERIFIED</span>
+              </div>
+
+              <!-- TODO: Replace link placeholders with real links -->
+              <div class="icon-row" aria-label="Quick links">
+                <a class="icon-link" href="https://www.linkedin.com/in/YOUR-LINKEDIN" target="_blank" rel="noreferrer" title="LinkedIn">
+                  <span class="icon">in</span>
+                </a>
+                <a class="icon-link" href="https://github.com/YOUR-GITHUB" target="_blank" rel="noreferrer" title="GitHub">
+                  <span class="icon">{ }</span>
+                </a>
+                <a class="icon-link" href="mailto:jasminegrant.cyber@gmail.com" title="Email">
+                  <span class="icon">@</span>
+                </a>
               </div>
             </div>
 
-            <!-- Polaroid clipped headshot -->
+            <!-- Photo block -->
             <div class="polaroid-wrap">
               <div class="clip" aria-hidden="true"></div>
               <div class="polaroid">
+                <!-- TODO: Put a real headshot at assets/headshot.jpg -->
                 <img
                   src="assets/headshot.jpg"
                   alt="Jasmine Grant headshot"
                   onerror="this.style.display='none'; this.nextElementSibling.style.display='grid';"
                 />
                 <div class="polaroid-fallback mono" style="display:none;">
-                  DROP YOUR PHOTO IN<br/>assets/headshot.jpg
+                  DROP PHOTO IN<br/>assets/headshot.jpg
                 </div>
-                <div class="polaroid-caption mono">
-                  ID: JG-001 • VERIFIED
-                </div>
+                <div class="polaroid-caption mono">ID: JG-001 • VERIFIED</div>
               </div>
             </div>
           </div>
 
           <div class="divider"></div>
 
-          <!-- PAGES -->
-          <section class="page show" id="page-home">
+          <!-- =========================================================
+            PAGES
+            Only one is visible at a time (controlled by script.js)
+          ========================================================== -->
+
+          <!-- HOME -->
+          <section class="page show enter" id="page-home">
             <div class="grid-2">
-              <div class="card paper">
+              <div class="card paper clickable" data-jump="evidence" role="button" tabindex="0">
                 <div class="card-h mono">MISSION OBJECTIVE</div>
                 <p>
-                  Position <span class="hl">Jasmine Grant</span> in a role where she secures systems,
-                  solves hard problems, and ships outcomes under pressure.
+                  Position <span class="hl">Jasmine Grant</span> in a role where she resolves issues fast,
+                  documents cleanly, and levels up into <span class="hl">cloud security</span>.
                 </p>
+
                 <ul class="list">
-                  <li><span class="dot"></span> Elite problem-solving + execution bias</li>
-                  <li><span class="dot"></span> Cloud-first security foundations</li>
-                  <li><span class="dot"></span> AI security mindset (threat modeling + abuse cases)</li>
+                  <li><span class="dot"></span> High-volume ticket triage + rapid resolution</li>
+                  <li><span class="dot"></span> Clear documentation + calm communication</li>
+                  <li><span class="dot"></span> Security-forward mindset (least privilege, visibility)</li>
                 </ul>
 
                 <div class="cta">
@@ -137,9 +264,7 @@
 
               <div class="card paper">
                 <div class="card-h mono">REDACTED INTEL BRIEF</div>
-                <p class="mono small muted">
-                  Sensitive highlights are masked. Authorized viewers may reveal.
-                </p>
+                <p class="mono small muted">Tap/click reveal. Works on phone + desktop.</p>
 
                 <div class="redactions">
                   <div class="red-row">
@@ -149,13 +274,13 @@
                   </div>
                   <div class="red-row">
                     <span class="mono tiny">RISK:</span>
-                    <span class="redact">█████████</span>
+                    <span class="redact">███████████████</span>
                     <span class="mono tiny">low. coachable. consistent.</span>
                   </div>
                   <div class="red-row">
                     <span class="mono tiny">EDGE:</span>
-                    <span class="redact">██████████████████</span>
-                    <span class="mono tiny">communication + technical discipline.</span>
+                    <span class="redact">███████████████</span>
+                    <span class="mono tiny">communication + execution.</span>
                   </div>
                 </div>
 
@@ -166,256 +291,344 @@
             <div class="card paper wide">
               <div class="card-h mono">QUICK FILE INDEX</div>
               <div class="index">
-                <div class="index-item">
+                <div class="index-item clickable" data-jump="evidence" role="button" tabindex="0">
                   <div class="mono tiny badge">E-01</div>
                   <div>
-                    <div class="index-title">Incident Report Portfolio (Projects)</div>
-                    <div class="index-sub mono">Evidence presented as case reports with impact + findings.</div>
+                    <div class="index-title">Evidence = Incident Reports</div>
+                    <div class="index-sub mono">Projects framed as findings (no fake hacks).</div>
                   </div>
                 </div>
-                <div class="index-item">
+
+                <div class="index-item clickable" data-jump="experience" role="button" tabindex="0">
                   <div class="mono tiny badge">X-02</div>
                   <div>
-                    <div class="index-title">Work + School Timeline</div>
-                    <div class="index-sub mono">Clear progression, no fluff, recruiter-readable.</div>
+                    <div class="index-title">Experience = Timeline</div>
+                    <div class="index-sub mono">Recruiter-readable impact and metrics.</div>
                   </div>
                 </div>
-                <div class="index-item">
+
+                <div class="index-item clickable" data-jump="skills" role="button" tabindex="0">
                   <div class="mono tiny badge">S-03</div>
                   <div>
                     <div class="index-title">Skills Matrix</div>
-                    <div class="index-sub mono">Security, cloud, GRC, AI-security ramp.</div>
+                    <div class="index-sub mono">Fast scan for hiring managers.</div>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
+          <!-- CASE SUMMARY -->
           <section class="page" id="page-bio">
             <div class="card paper wide">
               <div class="card-h mono">CASE SUMMARY</div>
+
+              <!-- TODO: Edit summary if needed -->
               <p>
-                <strong>Jasmine Grant</strong> is a cybersecurity student with a strong execution mindset and a clear
-                trajectory toward <span class="hl">AI Security</span>. She communicates well, learns fast, and
-                focuses on building proof — not just talking about potential.
+                <strong>Jasmine Grant</strong> is a Tier 1 Help Desk / Service Desk professional with 5+ years in
+                high-volume support environments. She specializes in triage, incident resolution, SLA-driven workflows,
+                and clean documentation — with a cloud-first trajectory into security.
               </p>
 
               <div class="meta-grid">
                 <div class="meta">
                   <div class="mono tiny">POSITIONING</div>
-                  <div>Elite • Problem Solver • High Upside</div>
+                  <div>High Volume • SLA Driven • Trusted Support</div>
                 </div>
                 <div class="meta">
-                  <div class="mono tiny">FOCUS</div>
-                  <div>Cloud Security • AI Security • GRC</div>
+                  <div class="mono tiny">CORE STRENGTH</div>
+                  <div>Triage • Troubleshooting • Documentation</div>
                 </div>
                 <div class="meta">
-                  <div class="mono tiny">WORK STYLE</div>
-                  <div>Structured • Coachable • Outcome-driven</div>
+                  <div class="mono tiny">NEXT STEP</div>
+                  <div>Cloud Security • SOC • GRC (Foundations)</div>
                 </div>
               </div>
             </div>
           </section>
 
+          <!-- EXPERIENCE -->
           <section class="page" id="page-experience">
             <div class="card paper wide">
               <div class="card-h mono">EXPERIENCE TIMELINE</div>
-              <p class="mono small muted">Replace these entries with your exact roles + dates when ready.</p>
+              <p class="mono small muted">TODO: Replace wording if you want, but these are solid.</p>
             </div>
 
             <div class="timeline">
               <div class="tl-item">
-                <div class="tl-date mono">2025–Present</div>
+                <div class="tl-date mono">Feb 2022 – Present</div>
                 <div class="tl-body">
-                  <div class="tl-title">Cybersecurity Student</div>
-                  <div class="tl-sub mono">Focus: security fundamentals, cloud-first thinking, AI security trajectory.</div>
-                  <div class="tl-notes mono tiny">Notes: building evidence-based projects + portfolio artifacts.</div>
+                  <div class="tl-title">Application Support / Help Desk Specialist (Healthcare)</div>
+                  <div class="tl-sub mono">NyWes Phlebotomy & Mobile Health Services • Remote</div>
+                  <div class="tl-notes mono tiny">
+                    • Review/support 100+ records weekly with 99% accuracy<br/>
+                    • Resolve 85% of issues without escalation, reducing backlog<br/>
+                    • Maintain HIPAA compliance and documentation standards
+                  </div>
                 </div>
               </div>
 
               <div class="tl-item">
-                <div class="tl-date mono">2022–2025</div>
+                <div class="tl-date mono">Sep 2019 – Jan 2024</div>
                 <div class="tl-body">
-                  <div class="tl-title">Professional Experience</div>
-                  <div class="tl-sub mono">Operations, support, or related work — showcased with measurable outcomes.</div>
-                  <div class="tl-notes mono tiny">Notes: add metrics (volume, accuracy, speed, impact).</div>
+                  <div class="tl-title">Help Desk Technician / Technical Support Specialist</div>
+                  <div class="tl-sub mono">Foundever • Jacksonville, FL</div>
+                  <div class="tl-notes mono tiny">
+                    • Managed 200+ tickets weekly; closed 98% within SLA<br/>
+                    • Achieved 95% first-contact resolution (chat + phone)<br/>
+                    • Supported login/access issues and application troubleshooting
+                  </div>
+                </div>
+              </div>
+
+              <div class="tl-item">
+                <div class="tl-date mono">Jun 2019 – Sep 2019</div>
+                <div class="tl-body">
+                  <div class="tl-title">IT Support & Systems Operations (Entry Level)</div>
+                  <div class="tl-sub mono">United States Army • Fort Jackson, SC</div>
+                  <div class="tl-notes mono tiny">
+                    • Supported internal systems across 5+ departments<br/>
+                    • Delivered 20+ hours/month of system/process training<br/>
+                    • Followed strict documentation and operational procedures
+                  </div>
                 </div>
               </div>
             </div>
           </section>
 
+          <!-- EVIDENCE -->
           <section class="page" id="page-evidence">
             <div class="card paper wide">
               <div class="card-h mono">EVIDENCE: INCIDENT REPORTS</div>
-              <p class="mono small muted">
-                This is your portfolio — formatted like real intel. Each project becomes an incident report.
-              </p>
+              <p class="mono small muted">Tap a report to expand/collapse. Works on mobile.</p>
             </div>
 
             <div class="reports">
-              <article class="report">
+              <article class="report sev-high collapsible" tabindex="0">
                 <div class="report-top">
                   <div class="mono tiny">INCIDENT ID: E-01</div>
                   <div class="mono tiny">SEVERITY: HIGH</div>
                 </div>
-                <div class="report-title">Project Name (Example): Cloud Logging Baseline</div>
+                <div class="report-title">High-Volume Ticket Ops (Tier 1)</div>
+
+                <div class="badges">
+                  <span class="badge-pill">SLA</span>
+                  <span class="badge-pill">TICKETING</span>
+                  <span class="badge-pill">FCR</span>
+                </div>
+
                 <div class="report-grid">
-                  <div>
+                  <div class="report-block">
                     <div class="mono tiny label">SUMMARY</div>
-                    <div class="mono small">Built a baseline logging + alerting setup to detect suspicious behavior.</div>
+                    <div class="mono small">Handled high ticket volume and maintained consistent closure performance.</div>
                   </div>
-                  <div>
+                  <div class="report-block">
                     <div class="mono tiny label">IMPACT</div>
-                    <div class="mono small">Improved visibility and reduced time-to-detect in a simulated scenario.</div>
+                    <div class="mono small">Improved throughput and kept response times within SLA targets.</div>
                   </div>
-                  <div>
+                  <div class="report-block">
                     <div class="mono tiny label">FINDINGS</div>
-                    <div class="mono small">Least privilege, centralized logs, actionable alerts beat noise.</div>
+                    <div class="mono small">Triage + clean notes reduces repeat issues and escalations.</div>
                   </div>
-                  <div>
+                  <div class="report-block">
                     <div class="mono tiny label">ARTIFACTS</div>
-                    <div class="mono small">Write-up • Repo • Screenshots (add links later)</div>
+                    <div class="mono small">
+                      <!-- TODO: Add real links -->
+                      TODO: GitHub link • Case study PDF • Screenshots
+                    </div>
                   </div>
                 </div>
+
+                <div class="collapse-hint mono tiny muted">Tap to collapse/expand</div>
               </article>
 
-              <article class="report">
+              <article class="report sev-high collapsible" tabindex="0">
                 <div class="report-top">
                   <div class="mono tiny">INCIDENT ID: E-02</div>
-                  <div class="mono tiny">SEVERITY: MED</div>
-                </div>
-                <div class="report-title">Project Name (Example): GRC Controls Map</div>
-                <div class="report-grid">
-                  <div>
-                    <div class="mono tiny label">SUMMARY</div>
-                    <div class="mono small">Mapped risk → controls → evidence so audits don’t become chaos.</div>
-                  </div>
-                  <div>
-                    <div class="mono tiny label">IMPACT</div>
-                    <div class="mono small">Made compliance readable + trackable for non-technical stakeholders.</div>
-                  </div>
-                  <div>
-                    <div class="mono tiny label">FINDINGS</div>
-                    <div class="mono small">Clarity wins. Evidence structure prevents last-minute scrambling.</div>
-                  </div>
-                  <div>
-                    <div class="mono tiny label">ARTIFACTS</div>
-                    <div class="mono small">Template • PDF • Example evidence pack</div>
-                  </div>
-                </div>
-              </article>
-
-              <article class="report">
-                <div class="report-top">
-                  <div class="mono tiny">INCIDENT ID: E-03</div>
                   <div class="mono tiny">SEVERITY: HIGH</div>
                 </div>
-                <div class="report-title">Project Name (Example): Mini Miracle (Local-first Assistant)</div>
+                <div class="report-title">Healthcare Support + Compliance</div>
+
+                <div class="badges">
+                  <span class="badge-pill">HIPAA</span>
+                  <span class="badge-pill">DOCS</span>
+                  <span class="badge-pill">QUALITY</span>
+                </div>
+
                 <div class="report-grid">
-                  <div>
+                  <div class="report-block">
                     <div class="mono tiny label">SUMMARY</div>
-                    <div class="mono small">Local-first assistant prototype designed with privacy in mind.</div>
+                    <div class="mono small">Supported healthcare workflows while maintaining strict compliance.</div>
                   </div>
-                  <div>
+                  <div class="report-block">
                     <div class="mono tiny label">IMPACT</div>
-                    <div class="mono small">Shows systems thinking: security + UX + implementation structure.</div>
+                    <div class="mono small">High accuracy and fewer escalations through proper handling + documentation.</div>
                   </div>
-                  <div>
+                  <div class="report-block">
                     <div class="mono tiny label">FINDINGS</div>
-                    <div class="mono small">Threat modeling early prevents bad architecture later.</div>
+                    <div class="mono small">Compliance is a habit: permissions, data handling, audit-ready notes.</div>
                   </div>
-                  <div>
+                  <div class="report-block">
                     <div class="mono tiny label">ARTIFACTS</div>
-                    <div class="mono small">Repo • Architecture diagram • Demo clip</div>
+                    <div class="mono small">
+                      <!-- TODO: Add real links -->
+                      TODO: Sanitized workflow diagram • Training notes
+                    </div>
                   </div>
                 </div>
+
+                <div class="collapse-hint mono tiny muted">Tap to collapse/expand</div>
+              </article>
+
+              <article class="report sev-med collapsible" tabindex="0">
+                <div class="report-top">
+                  <div class="mono tiny">INCIDENT ID: E-03</div>
+                  <div class="mono tiny">SEVERITY: MED</div>
+                </div>
+                <div class="report-title">Training + Systems Support</div>
+
+                <div class="badges">
+                  <span class="badge-pill">TRAINING</span>
+                  <span class="badge-pill">PROCESS</span>
+                  <span class="badge-pill">OPS</span>
+                </div>
+
+                <div class="report-grid">
+                  <div class="report-block">
+                    <div class="mono tiny label">SUMMARY</div>
+                    <div class="mono small">Delivered training and supported internal systems operations.</div>
+                  </div>
+                  <div class="report-block">
+                    <div class="mono tiny label">IMPACT</div>
+                    <div class="mono small">Improved adoption and reduced friction through clear instructions.</div>
+                  </div>
+                  <div class="report-block">
+                    <div class="mono tiny label">FINDINGS</div>
+                    <div class="mono small">People don’t need more tools — they need clarity and repeatable steps.</div>
+                  </div>
+                  <div class="report-block">
+                    <div class="mono tiny label">ARTIFACTS</div>
+                    <div class="mono small">
+                      <!-- TODO: Add real links -->
+                      TODO: 1 training outline • Checklist
+                    </div>
+                  </div>
+                </div>
+
+                <div class="collapse-hint mono tiny muted">Tap to collapse/expand</div>
               </article>
             </div>
           </section>
 
+          <!-- SKILLS -->
           <section class="page" id="page-skills">
             <div class="card paper wide">
               <div class="card-h mono">SKILLS MATRIX</div>
-              <p class="mono small muted">Scan-friendly. Recruiters should “get it” in 10 seconds.</p>
+              <p class="mono small muted">TODO: Adjust % widths to match confidence.</p>
             </div>
 
             <div class="matrix">
-              <div class="m-row">
-                <div class="mono tiny k">SECURITY</div>
-                <div class="bar"><span style="width:78%"></span></div>
+              <div class="m-row clickable" data-jump="contact" role="button" tabindex="0">
+                <div class="mono tiny k">SUPPORT</div>
+                <div class="bar"><span style="width:85%"></span></div>
                 <div class="mono tiny v">STRONG</div>
               </div>
-              <div class="m-row">
+              <div class="m-row clickable" data-jump="contact" role="button" tabindex="0">
+                <div class="mono tiny k">DOCS</div>
+                <div class="bar"><span style="width:80%"></span></div>
+                <div class="mono tiny v">STRONG</div>
+              </div>
+              <div class="m-row clickable" data-jump="contact" role="button" tabindex="0">
                 <div class="mono tiny k">CLOUD</div>
-                <div class="bar"><span style="width:70%"></span></div>
+                <div class="bar"><span style="width:65%"></span></div>
                 <div class="mono tiny v">GROWING</div>
               </div>
-              <div class="m-row">
-                <div class="mono tiny k">GRC</div>
-                <div class="bar"><span style="width:62%"></span></div>
-                <div class="mono tiny v">RAMPING</div>
-              </div>
-              <div class="m-row">
-                <div class="mono tiny k">AI SECURITY</div>
-                <div class="bar"><span style="width:55%"></span></div>
+              <div class="m-row clickable" data-jump="contact" role="button" tabindex="0">
+                <div class="mono tiny k">SECURITY</div>
+                <div class="bar"><span style="width:60%"></span></div>
                 <div class="mono tiny v">BUILDING</div>
               </div>
             </div>
-          </section>
 
-          <section class="page" id="page-awards">
             <div class="card paper wide">
-              <div class="card-h mono">AWARDS + CREDENTIALS</div>
-              <p class="mono small muted">Add certs, scholarships, honors, published work, leadership.</p>
-              <div class="award-list">
-                <div class="award">• Certification: (add)</div>
-                <div class="award">• Scholarship/Honor: (add)</div>
-                <div class="award">• Competition/Leadership: (add)</div>
+              <div class="card-h mono">TOOL STACK</div>
+              <div class="stack mono small">
+                <!-- TODO: Replace with your real tools -->
+                <span class="pill">Ticketing</span>
+                <span class="pill">Remote Support</span>
+                <span class="pill">Troubleshooting</span>
+                <span class="pill">Documentation</span>
+                <span class="pill">Access Management</span>
+                <span class="pill">Cloud Fundamentals</span>
               </div>
             </div>
           </section>
 
+          <!-- AWARDS -->
+          <section class="page" id="page-awards">
+            <div class="card paper wide">
+              <div class="card-h mono">AWARDS + CREDENTIALS</div>
+              <div class="award-list mono small">
+                <!-- TODO: Add real certifications + training -->
+                <div>• TODO: Certification (ISC2 CC / Security+ / AWS CCP)</div>
+                <div>• TODO: Training (bootcamp/cohort)</div>
+                <div>• TODO: Recognition (award/scholarship)</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- CONTACT -->
           <section class="page" id="page-contact">
             <div class="card paper wide" id="contact">
               <div class="card-h mono">CONTACT PROTOCOL</div>
-              <p class="mono small muted">Professional, direct, easy to act on.</p>
+              <p class="mono small muted">Tap cards to copy. Form sends real emails (Formspree).</p>
 
               <div class="contact-grid">
-                <div class="c-card">
+                <button class="c-card copy" data-copy="jasminegrant.cyber@gmail.com" type="button">
                   <div class="mono tiny label">EMAIL</div>
-                  <div class="mono">add-your-email@email.com</div>
-                </div>
-                <div class="c-card">
+                  <div class="mono">jasminegrant.cyber@gmail.com</div>
+                </button>
+
+                <button class="c-card copy" data-copy="https://www.linkedin.com/in/YOUR-LINKEDIN" type="button">
                   <div class="mono tiny label">LINKEDIN</div>
-                  <div class="mono">linkedin.com/in/your-handle</div>
-                </div>
-                <div class="c-card">
+                  <div class="mono">TODO: add your link</div>
+                </button>
+
+                <button class="c-card copy" data-copy="https://github.com/YOUR-GITHUB" type="button">
                   <div class="mono tiny label">GITHUB</div>
-                  <div class="mono">github.com/your-username</div>
-                </div>
+                  <div class="mono">TODO: add your link</div>
+                </button>
               </div>
 
               <div class="divider soft"></div>
 
-              <form class="form" onsubmit="return false;">
+              <!-- =========================================================
+                REAL EMAIL FORM (Formspree)
+                TODO:
+                1) Create a Formspree form
+                2) Replace action URL below with your Formspree endpoint
+                Example: https://formspree.io/f/xxxxabcd
+              ========================================================== -->
+              <form class="form" action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
                 <div class="form-row">
                   <label>
                     <span class="mono tiny label">NAME</span>
-                    <input type="text" placeholder="Your name" />
+                    <input name="name" type="text" placeholder="Your name" required />
                   </label>
                   <label>
                     <span class="mono tiny label">EMAIL</span>
-                    <input type="email" placeholder="you@email.com" />
+                    <input name="email" type="email" placeholder="you@email.com" required />
                   </label>
                 </div>
 
                 <label>
                   <span class="mono tiny label">MESSAGE</span>
-                  <textarea rows="5" placeholder="Why you’re reaching out…"></textarea>
+                  <textarea name="message" rows="5" placeholder="Why you’re reaching out…" required></textarea>
                 </label>
 
-                <button class="btn mono primary" type="button" id="fakeSend">SEND</button>
-                <div class="mono tiny muted" id="sendNote"></div>
+                <input type="hidden" name="_subject" value="New message from Jasmine Grant dossier website" />
+
+                <button class="btn mono primary" type="submit">SEND</button>
               </form>
             </div>
           </section>
@@ -423,6 +636,7 @@
           <footer class="footer mono tiny muted">
             © <span id="year"></span> Jasmine Grant • Intel Dossier Theme • GitHub Pages Ready
           </footer>
+
         </div>
       </section>
     </section>
